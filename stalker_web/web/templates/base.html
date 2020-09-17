@@ -1,0 +1,31 @@
+{% load static %}
+<html>
+<head>
+
+<link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<script src="{% static 'js/jquery.min.js' %}"></script>
+<script src="{% static 'js/bootstrap.min.js' %}"></script>
+<title>
+	{% block title %}Page Title{% endblock %}
+</title>
+<body>
+
+<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+  <a class="navbar-brand" href="#">Stalker</a>
+  <ul class="navbar-nav">
+    <li class="nav-item">
+      <a class="nav-link" href="{% url 'search_page' %}">Search</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#">Administration</a>
+    </li>
+  </ul>
+</nav>
+
+{% block content %}
+Body content
+{% endblock %}
+
+</body>
+</html>

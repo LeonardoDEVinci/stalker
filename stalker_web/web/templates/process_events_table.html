@@ -1,0 +1,50 @@
+<table class="table row4-striped table-bordered table-hover table-sm table-dark">
+<thead>
+	<tr>
+		<th>UtcTime</th>
+		<th>EventType</th>
+		<th>User</th>
+		<th>Image</th>
+		<th>CommandLine</th>
+		<th>DestinationIp</th>
+		<th>DestinationPort</th>
+	</tr>
+</thead>
+<tbody>
+{% for event in events %}
+<tr>
+	<td>{{ event.UtcTime }}</td>
+	<td>{{ event.EventType }}</td>
+	<td>{{ event.User }}</td>
+	<td>{{ event.Image }}</td>
+	<td>{{ event.CommandLine }}</td>
+	<td>{{ event.DestinationIp }}</td>
+	<td>{{ event.DestinationPort }}</td>
+</tr>
+<tr>
+	<td class="expands" colspan="8" style="padding:0px;">
+	<div class="row-expand">
+	{% for k, v in event.items %}
+		{% if k == 'ProcessGuid' or k == 'ParentProcessGuid' %}
+			{{ k }}: <a href="{% url 'process' v %}">{{ v }}</a><br>
+		{% else %}
+			{{ k }}: {{ v }}<br>
+		{% endif %}
+	{% endfor %}
+	</div>	
+	</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+<script>
+$(function() {
+    $(".expands").find("div").hide();
+    $("table").click(function(event) {
+        event.stopPropagation();
+        var $target = $(event.target);
+        $target.closest("tr").next().find("div").slideToggle();
+    });
+});
+</script>
+

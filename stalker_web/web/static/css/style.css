@@ -1,0 +1,16 @@
+body {
+	background-color: #1c1c1c;
+	color: #c4c4c4;
+}
+
+.table-dark {
+	color: #c4c4c4;
+}
+
+.row-expand {
+	background-color: #000000;
+}
+
+.row4-striped tr:nth-child(4n+3) {
+	background-color: #3e444a;
+}

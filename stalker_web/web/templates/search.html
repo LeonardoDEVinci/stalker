@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Search{% endblock %}
+{% block content %}
+{% load static %}
+
+<div class="container-fluid">
+	<br>
+	<div class="text-center input-group">
+		<input type="text" id="search_box" class="form-control" placeholder="Search">
+		<div class="input-group-append">
+			<button id="search_button" class="btn btn-primary">Search</button>
+	    </div>
+	</div>
+
+	<br>
+	<div id="process_events" class="text-center">
+	</div>
+</div>
+
+<script>
+$("#search_button").click(function() {
+	$('#process_events').html($('<img>', {src:"{% static 'img/loading.png' %}"}))
+	$.ajax({
+	    type: "GET",
+	    url: "{% url 'search_events' %}",
+	    data: "query=" + $('#search_box').val(),
+	    success: function(data) {
+			$("#process_events").html(data);
+	    },
+	    error: function() {
+			$("#process_events").html("Error downloading event table.");
+		}
+	});
+});
+$('#search_box').keypress(function(event) {
+	var keyCode = (event.keyCode ? event.keyCode : event.which);   
+	if (keyCode == 13)  // the enter key code
+	{
+		$('#search_button').click();
+	}
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,16 @@
+<ul>
+{% for proc in procs %}
+	{% if proc.end_children %}
+	</ul>
+
+	{% elif proc.start_children %}
+	<ul>
+	<li>[{{ proc.UtcTime }}] {{ proc.CommandLine }}</li>
+
+	{% else %}
+	<li>[{{ proc.UtcTime }}] {{ proc.CommandLine }}</li>
+
+	{% endif %}
+{% endfor %}
+</ul>
+
