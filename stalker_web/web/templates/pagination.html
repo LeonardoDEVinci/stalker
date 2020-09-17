@@ -1,0 +1,9 @@
+<ul class="pagination justify-content-center">
+	{% for page in pages %}
+		{% if page.active %}
+		<li class="page-item active"><a class="page-link" onclick="sendSearch({{ page.page }})" href="#">{{ page.text }}</a></li>
+		{% else %}
+		<li class="page-item"><a class="page-link" onclick="sendSearch({{ page.page }})" href="#">{{ page.text }}</a></li>
+		{% endif %}
+	{% endfor %}
+</ul>

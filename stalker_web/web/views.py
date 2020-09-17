@@ -46,6 +46,43 @@ def createMapping(request):
 
 def pagination(page, hits_count, size):
 	pages = []
+	max_pages = 20
+
+	last_page = int(hits_count / size)
+
+	if last_page == 0:
+		last_page = 1
+	elif hits_count % size != 0:
+		last_page += 1
+
+	if page > last_page:
+		page = last_page
+
+	if page > 1:
+		pages.append({'text': '<<', 'page': page - 1, 'active': False})
+
+	if page <= max_pages:
+		start = 1
+		if last_page < max_pages:
+			end = last_page
+		else:
+			end = max_pages
+
+	else:
+		start = page - max_pages + 1
+		if page != last_page:
+			end = page
+		else:
+			end = last_page
+
+	for i in range(start, end + 1):
+		if i == page:
+			pages.append({'text': str(i), 'page': i, 'active': True})
+		else:
+			pages.append({'text': str(i), 'page': i, 'active': False})
+
+	if page != last_page:
+		pages.append({'text': '>>', 'page': page + 1, 'active': False})
 
 	return pages
 
@@ -144,11 +181,11 @@ def processTree(guid):
 	return procs
 
 
-def getEvents(guids, query):
+def getProcessEvents(guids, query, page, size):
 	es = esConnect()
 	body = {
-		"from" : 0, # change for pagination
-		"size": 100,
+		"from" : (page - 1) * size,
+		"size": size,
 		"sort": [
 			{
 				"UtcTime": "asc"
@@ -168,17 +205,33 @@ def getEvents(guids, query):
 	for hit in res['hits']['hits']:
 		events.append(hit['_source'])
 
-	return events
+	pages = []
+	if events:
+		hits_count = res['hits']['total']['value']
+		pages = pagination(page, hits_count, size)
+
+	return events, pages
 
 
 @csrf_exempt
 def processEventsTable(request):
+	size = 100
 	guids = request.POST.getlist("guids[]", [])
-	query = request.POST.get("query", "").strip()
-	events = getEvents(guids, query)
+	query = request.POST.get("query", "*").strip()
+	page = request.POST.get("page", 1)
+
+	if query == "":
+		query = "*"
+
+	try:
+		page = int(page)
+	except:
+		page = 1
+
+	events, pages = getProcessEvents(guids, query, page, size)
 
 	if events:
-		context = {'events': events}
+		context = {'events': events, 'pages': pages}
 		return render(request, "process_events_table.html", context) 
 
 	return HttpResponse('No results found.')
@@ -193,8 +246,8 @@ def process(request, guid):
 		if pg:
 			proc_guids.append(pg)
 
-	events = getEvents(proc_guids, '*')
-	context = {'procs': procs, 'guids': proc_guids, 'events': events}
+	events, pages = getProcessEvents(proc_guids, '*', 1, 100)
+	context = {'procs': procs, 'guids': proc_guids, 'events': events, 'pages': pages}
 
 	return render(request, "process.html", context) 
 

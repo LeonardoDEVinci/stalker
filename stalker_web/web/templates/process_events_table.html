@@ -23,7 +23,7 @@
 </tr>
 <tr>
 	<td class="expands" colspan="8" style="padding:0px;">
-	<div class="row-expand">
+	<div class="row-expand" style="display:none;">
 	{% for k, v in event.items %}
 		{% if k == 'ProcessGuid' or k == 'ParentProcessGuid' %}
 			{{ k }}: <a href="{% url 'process' v %}">{{ v }}</a><br>
@@ -37,6 +37,9 @@
 {% endfor %}
 </tbody>
 </table>
+
+{% include "pagination.html" %}
+
 <script>
 $(function() {
     $(".expands").find("div").hide();

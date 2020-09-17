@@ -28,9 +28,9 @@
 </div>
 
 <script>
-$("#search_button").click(function() {
+function sendSearch(page) {
 	$('#process_events').html($('<img>', {src:"{% static 'img/loading.png' %}"}))
-	var queryData = {'guids': {{ guids|safe }}, 'query': $('#search_box').val()};
+	var queryData = {'guids': {{ guids|safe }}, 'query': $('#search_box').val(), 'page': page};
 	$.ajax({
 	    type: "POST",
 	    url: "{% url 'process_events_table' %}",
@@ -42,6 +42,9 @@ $("#search_button").click(function() {
 			$("#process_events").html("Error downloading event table.");
 	    }
 	});
+}
+$("#search_button").click(function() {
+	sendSearch(1);
 });
 $('#search_box').keypress(function(event) {
 	var keyCode = (event.keyCode ? event.keyCode : event.which);   
