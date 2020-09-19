@@ -29,15 +29,10 @@ def esConnect():
 	return Elasticsearch([settings.ES_HOST])
 
 
-@csrf_exempt
-def register_host(request):
-	cur = connection.cursor()
-	req = json.loads(request.body.decode('utf-8'))
-	guid = req['guid']
-	ip = get_client_ip(request)
-	cur.execute("""INSERT INTO hosts (guid, ip) VALUES (%s, %s)""", (guid, ip))	
-	connection.commit()
-	return sendJSON(True)
+def apiTest(request):
+	data = {}
+	data['success'] = True
+	return JsonResponse(data)
 
 
 @csrf_exempt
@@ -46,14 +41,8 @@ def add_events(request):
 	req = json.loads(request.body.decode('utf-8'))
 
 	ip = get_client_ip(request)
-	# update host table with ip
 	# check for sysmon version/configuration hash
 
-	#cur.execute("""SELECT id FROM hosts WHERE guid=%s""", (req['host_guid'],))	
-	#host_id = cur.fetchone()[0]
-
-	#event['HostId'] = 1
-	# maybe use generator on bulk call to add HostID to each event
 	response = helpers.bulk(es, req['events'], index='stalker', chunk_size=2000)
 
 	return sendJSON(True)
