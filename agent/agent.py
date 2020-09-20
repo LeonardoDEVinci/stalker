@@ -1,6 +1,5 @@
 #Sysmon.exe -i -h md5,sha1,sha256,imphash -l -n -accepteula
 
-import os
 import json
 import winreg
 import ctypes
@@ -72,9 +71,6 @@ def installAgent(server_url, zero):
 		winreg.SetValueEx(reg_key, REG_EVENT_ID_KEY, 0, winreg.REG_QWORD, event_record_id)
 		winreg.SetValueEx(reg_key, REG_SERVER_KEY, 0, winreg.REG_SZ, server_url)
 
-	# create scheduled task
-	os.system('schtasks.exe /create /F /RU "NT AUTHORITY\SYSTEM" /RL HIGHEST /SC ONCE /SD 07/13/2020 /ST 00:00 /RI 5 /TN "Stalker" /TR "cmd.exe /c exit')
-
 
 def getConfig():
 	config = {}
@@ -143,21 +139,29 @@ def eventToDict(event):
 
 def queryEvents(config):
 	# query events from events log
-	query = EventLog.Query("Microsoft-Windows-Sysmon/Operational", "Event/System[EventRecordID>%s]" % config['EventRecordID'])
+	query = EventLog.Query("Microsoft-Windows-Sysmon/Operational", "Event/System")
 
 	events = {}
 	events['events'] = []
 
 	for count, event in enumerate(query, 1):
 		event_dict = eventToDict(event)
+		if event_dict['EventRecordID'] < config['EventRecordID']:
+			continue
+
 		events['events'].append(event_dict)
 
 		if count % 5000 == 0:
 			sendEvents(config, events)
-			events['events'] = []			 
+			events['events'] = []
 
-	if not events['events']:
+	if events['events']:
 		sendEvents(config, events)
+
+	if event_dict:
+		with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, REG_PATH, 0, winreg.KEY_WRITE) as reg_key:
+			winreg.SetValueEx(reg_key, REG_EVENT_ID_KEY, 0, winreg.REG_QWORD, event_dict['EventRecordID'])
+
 
 
 if __name__ == '__main__':
