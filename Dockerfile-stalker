@@ -1,0 +1,23 @@
+FROM python:3.9.0
+
+ARG DJANGO_SUPERUSER_USERNAME
+ARG DJANGO_SUPERUSER_EMAIL
+ARG DJANGO_SUPERUSER_PASSWORD
+ARG ELASTIC_PASSWORD
+
+COPY stalker_web /usr/local/stalker
+
+WORKDIR /usr/local/stalker
+
+RUN sed -i 's/REPLACE_ES_PASSWORD/'"${ELASTIC_PASSWORD}"'/' stalker/settings.py
+
+COPY requirements.txt requirements.txt
+RUN pip install -r requirements.txt
+
+RUN export DJANGO_SECRET_KEY=$(python3 -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())') ; sed -i -r 's/REPLACE_DJANGO_SECRET_KEY/"${DJANGO_SECRET_KEY}"/' stalker/settings.py
+
+RUN python manage.py makemigrations
+RUN python manage.py migrate
+RUN python manage.py createsuperuser --noinput --username "${DJANGO_SUPERUSER_USERNAME}" --email "${DJANGO_SUPERUSER_EMAIL}"
+
+CMD gunicorn --bind 0.0.0.0:8000 stalker.wsgi

@@ -1,0 +1,16 @@
+<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+  <a class="navbar-brand" href="{% url 'search_page' %}"><span style="font-family: 'Special Elite';">Stalker</span></a>
+  <ul class="navbar-nav mr-auto">
+    <li class="nav-item">
+      <a class="nav-link" href="{% url 'search_page' %}">Search</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="{% url 'manage' %}">Manage</a>
+    </li>
+  </ul>
+  <ul class="navbar-nav navbar-right">
+    <li class="nav-item">
+      <a class="nav-link" href="{% url 'logout_url' %}">Logout</a>
+    </li>
+  </ul>
+</nav>

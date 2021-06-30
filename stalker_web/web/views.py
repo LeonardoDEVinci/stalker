@@ -1,47 +1,30 @@
 import json
+import requests
 from django.conf import settings
 from django.shortcuts import render
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
+from django.urls import reverse
 from django.db import connection
-from django.views.decorators.csrf import csrf_exempt
-from elasticsearch import Elasticsearch, helpers
+from elasticsearch import Elasticsearch, helpers, exceptions
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+
+
+def evtToDict(res):
+	events = []
+	for hit in res['hits']['hits']:
+		evt_dict = {}
+		msg = hit['_source']['message']
+		for line in msg.splitlines():
+			k, v = line.split(":", 1)
+			evt_dict[k] = v.strip()
+		evt_dict['EventType'] = hit['_source']['event']['action'].split(' (', 1)[0]
+		events.append(evt_dict)
+	return events
 
 
 def esConnect():
-	return Elasticsearch([settings.ES_HOST])
-
-
-def createMapping(request):
-	es = esConnect()
-	index_settings = {
-		"settings": {
-			"number_of_shards": 2
-		},
-		"mappings": {
-			"properties": {
-				"CreationUtcTime": {
-					"type": "date",
-					"format": "yyyy-MM-dd HH:mm:ss.SSS"
-				},
-				"PreviousCreationUtcTime": {
-					"type": "date",
-					"format": "yyyy-MM-dd HH:mm:ss.SSS"
-				},
-				"UtcTime": {
-					"type": "date",
-					"format": "yyyy-MM-dd HH:mm:ss.SSS"
-				},
-				"DestinationIp": {
-					"type": "ip"
-				},
-				"SourceIp": {
-					"type": "ip"
-				}
-			}
-		}
-	}
-	response = es.indices.create(index=settings.ES_INDEX, body=index_settings)
-	return HttpResponse(response)
+	return Elasticsearch([settings.ES_HOST], http_auth=('elastic', settings.ES_PASSWORD))
 
 
 def pagination(page, hits_count, size):
@@ -93,8 +76,8 @@ def getProcCreate(guid):
 		"query": {
 			"bool": {
 				"must": [
-					{"term": {"ProcessGuid.keyword": guid} },
-					{"term": {"EventID": 1} }
+					{"term": {"process.entity_id": guid} },
+					{"term": {"winlog.event_id": "1"} }
 				]
 			}
 		}
@@ -103,6 +86,7 @@ def getProcCreate(guid):
 	res = es.search(index=settings.ES_INDEX, body=body)
 	hits = res['hits']['hits']
 	if hits:
+		hits[0]['_source']['timestamp'] = hits[0]['_source']['@timestamp']
 		return hits[0]['_source']
 	else:
 		return None
@@ -114,15 +98,15 @@ def getChildren(guids):
 		"size": 25,
 		"sort": [
 			{
-				"ParentProcessGuid.keyword": "asc",
-				"UtcTime": "asc"
+				"process.parent.entity_id": "asc",
+				"@timestamp": "asc"
 			}
 		],
 		"query": {
 			"bool": {
 				"must": [
-					{"terms": {"ParentProcessGuid.keyword": guids} },
-					{"term": {"EventID": 1} }
+					{"terms": {"process.parent.entity_id": guids} },
+					{"term": {"winlog.event_id": "1"} }
 				]
 			}
 		}
@@ -132,6 +116,7 @@ def getChildren(guids):
 	events = []
 
 	for hit in res['hits']['hits']:
+		hit['_source']['timestamp'] = hit['_source']['@timestamp']
 		events.append(hit['_source'])
 
 	return events
@@ -149,29 +134,29 @@ def processTree(guid):
 	while events:
 		children = []
 		child_guids = []
-		parent_guid = events[0]['ParentProcessGuid']
+		parent_guid = events[0]['process']['parent']['entity_id']
 		for event in events:
-			if event['ParentProcessGuid'] != parent_guid:
+			if event['process']['parent']['entity_id'] != parent_guid:
 				children[0]['start_children'] = True
 				children.append({'end_children': True})
 
 				for index, proc in enumerate(procs):
-					if proc.get('ProcessGuid') == parent_guid:
+					if proc.get('process') and proc['process']['entity_id'] == parent_guid:
 						index += 1
 						procs[index:index] = children
 						break
 
-				parent_guid = event['ParentProcessGuid']
+				parent_guid = event['process']['parent']['entity_id']
 				children = []
 
-			child_guids.append(event['ProcessGuid'])
+			child_guids.append(event['process']['entity_id'])
 			children.append(event)
 
 		children[0]['start_children'] = True
 		children.append({'end_children': True})
 
 		for index, proc in enumerate(procs):
-			if proc.get('ProcessGuid') == parent_guid:
+			if proc.get('process') and proc['process']['entity_id'] == parent_guid:
 				index += 1
 				procs[index:index] = children
 				break
@@ -188,22 +173,20 @@ def getProcessEvents(guids, query, page, size):
 		"size": size,
 		"sort": [
 			{
-				"UtcTime": "asc"
+				"@timestamp": "asc"
 			}
 		],
 		"query": {
 			"bool": {
 				"must": [
-					{"terms": {"ProcessGuid.keyword": guids} },
+					{"terms": {"process.entity_id": guids} },
 					{"query_string": {"query": query} }
 				]
 			}
 		}
 	}
 	res = es.search(index=settings.ES_INDEX, body=body)
-	events = []
-	for hit in res['hits']['hits']:
-		events.append(hit['_source'])
+	events = evtToDict(res)
 
 	pages = []
 	if events:
@@ -213,7 +196,7 @@ def getProcessEvents(guids, query, page, size):
 	return events, pages
 
 
-@csrf_exempt
+@login_required(login_url='login_url')
 def processEventsTable(request):
 	size = 100
 	guids = request.POST.getlist("guids[]", [])
@@ -237,14 +220,14 @@ def processEventsTable(request):
 	return HttpResponse('No results found.')
 
 
+@login_required(login_url='login_url')
 def process(request, guid):
 	procs = processTree(guid)
 
 	proc_guids = []
 	for proc in procs:
-		pg = proc.get('ProcessGuid')
-		if pg:
-			proc_guids.append(pg)
+		if proc.get('process'):
+			proc_guids.append(proc['process']['entity_id'])
 
 	events, pages = getProcessEvents(proc_guids, '*', 1, 100)
 	context = {'procs': procs, 'guids': proc_guids, 'events': events, 'pages': pages}
@@ -252,17 +235,24 @@ def process(request, guid):
 	return render(request, "process.html", context) 
 
 
+@login_required(login_url='login_url')
 def searchPage(request):
 	return render(request, "search.html") 
 
 
+@login_required(login_url='login_url')
 def searchEvents(request):
 	size = 100
-	query = request.GET.get('query', '').strip()
+	query = request.GET.get('query', '*').strip()
 	page = request.GET.get('page', 1)
+
+	if query == "":
+		query = "*"
 
 	try:
 		page = int(page)
+		if page < 1:
+			page = 1
 	except:
 		page = 1
 
@@ -273,7 +263,7 @@ def searchEvents(request):
 			"size": size,
 			"sort": [
 				{
-					"UtcTime": "asc"
+					"@timestamp": "desc"
 				}
 			],
 			"query": {
@@ -283,9 +273,7 @@ def searchEvents(request):
 			}
 		}
 		res = es.search(index=settings.ES_INDEX, body=body)
-		events = []
-		for hit in res['hits']['hits']:
-			events.append(hit['_source'])
+		events = evtToDict(res)
 
 		if events:
 			hits_count = res['hits']['total']['value']
@@ -294,4 +282,49 @@ def searchEvents(request):
 			return render(request, "process_events_table.html", context) 
 		
 	return HttpResponse('No results found.')
+
+
+@login_required(login_url='login_url')
+def manage(request):
+	es = esConnect()
+	exists = True
+	try:
+		user = es.security.get_user('winlogbeat_internal')
+	except exceptions.NotFoundError:
+		exists = False
+
+	if request.method == 'POST':
+		if not exists:
+			data = {"cluster":["manage_index_templates","monitor","manage_ilm"],"indices":[{"names":["winlogbeat-*"],"privileges":["write","create_index","manage","manage_ilm"]}]}
+			requests.post("http://%s:9200/_xpack/security/role/winlogbeat_writer" % settings.ES_HOST, auth=('elastic', settings.ES_PASSWORD), json=data)
+			data = {"password":request.POST['password'],"roles":["winlogbeat_writer"],"full_name":"InternalWinlogbeatUser"}
+			requests.post("http://%s:9200/_xpack/security/user/winlogbeat_internal" % settings.ES_HOST, auth=('elastic', settings.ES_PASSWORD), json=data)
+			exists = True
+
+	context = {'exists': exists}
+
+	return render(request, "manage.html", context) 
+
+
+def downloads(request):
+	return render(request, "downloads.html") 
+
+
+def login_view(request):
+	if request.method == 'GET':
+		return render(request, "login.html") 
+	else:
+		username = request.POST['username']
+		password = request.POST['password']
+		user = authenticate(request, username=username, password=password)
+		if user is not None:
+			login(request, user)
+			return HttpResponseRedirect(reverse('search_page'))
+		else:
+			return HttpResponseRedirect(reverse('login_url'))
+
+
+def logout_view(request):
+	logout(request)
+	return HttpResponseRedirect(reverse('login_url'))
 

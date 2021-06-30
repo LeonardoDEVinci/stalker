@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Stalker{% endblock %}
+{% block content %}
+
+<div class="container h-100">
+  <div class="row h-100 justify-content-center align-items-center">
+    <div class="form-group">
+      <a href="{% static 'winlogbeat_install.ps1' %}" download>Winlogbeat Install Script Download</a><br>
+      Run the following in Admin PowerShell
+      <div class="card card-body bg-dark">
+        PowerShell.exe -ExecutionPolicy UnRestricted -File .\winlogbeat_install.ps1
+      </div>
+    </div>
+  </div>  
+</div>
+
+{% endblock %}

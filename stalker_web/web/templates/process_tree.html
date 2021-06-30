@@ -5,10 +5,10 @@
 
 	{% elif proc.start_children %}
 	<ul>
-	<li>[{{ proc.UtcTime }}] {{ proc.CommandLine }}</li>
+	<li>[{{ proc.timestamp }}] {{ proc.process.command_line }}</li>
 
 	{% else %}
-	<li>[{{ proc.UtcTime }}] {{ proc.CommandLine }}</li>
+	<li>[{{ proc.timestamp }}] {{ proc.process.command_line }}</li>
 
 	{% endif %}
 {% endfor %}

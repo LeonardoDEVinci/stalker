@@ -20,12 +20,12 @@ BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'n**)p$#ig&e^w-p@4+rgkc2%is%ue=@_^)!jh2^f6fe$)&ak)('
+SECRET_KEY = REPLACE_DJANGO_SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-	'api',
 	'web',
 ]
 
@@ -120,11 +119,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = 'static/'
 
-ES_HOST = '127.0.0.1:9200'
-ES_INDEX = 'stalker'
+ES_HOST = 'stalker_es01'
+ES_INDEX = 'winlogbeat-*'
+ES_PASSWORD = 'REPLACE_ES_PASSWORD'
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600
-
-STATIC_URL = '/static/'
 

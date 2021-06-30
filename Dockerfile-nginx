@@ -1,0 +1,14 @@
+FROM nginx:1.19.4
+
+ARG STALKER_HTTP_PORT
+ARG STALKER_HTTPS_PORT
+
+RUN rm /etc/nginx/nginx.conf && rm -rf /etc/nginx/conf.d
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+COPY nginx/conf.d /etc/nginx/conf.d
+COPY nginx/certs /etc/nginx/certs
+
+RUN sed -i 's/REPLACE_AT_DOCKER_BUILD_SSL/'"${STALKER_HTTP_PORT}"'/' /etc/nginx/conf.d/stalker.conf
+RUN sed -i 's/REPLACE_AT_DOCKER_BUILD/'"${STALKER_HTTPS_PORT}"'/' /etc/nginx/conf.d/stalker.conf
+
+CMD nginx

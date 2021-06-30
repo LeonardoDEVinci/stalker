@@ -1,12 +1,13 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Search{% endblock %}
 {% block content %}
-{% load static %}
+{% include "navbar.html" %}
 
 <div class="container-fluid">
 	<br>
 	<div class="text-center input-group">
-		<input type="text" id="search_box" class="form-control" placeholder="Search">
+		<input type="text" id="search_box" class="form-control" placeholder="Search" autofocus>
 		<div class="input-group-append">
 			<button id="search_button" class="btn btn-primary">Search</button>
 	    </div>
